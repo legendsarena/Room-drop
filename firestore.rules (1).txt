@@ -1,0 +1,38 @@
+// firestore.rules
+//
+// HOW TO USE THIS:
+// 1. Go to Firebase Console -> your project -> Firestore Database -> Rules tab
+// 2. Delete everything in the editor
+// 3. Paste this entire file in
+// 4. Tap "Publish"
+//
+// Right now your database is in "test mode," which means ANYONE
+// on the internet can read AND delete everything in it. These
+// rules lock it down properly:
+//   - Anyone (even logged out) can VIEW rooms (so browsing works
+//     before login, if you ever want that)
+//   - Only logged-in users can CREATE a room
+//   - Only the original creator can EDIT or DELETE their own room
+//   - Users can only edit their own favorites list, not anyone else's
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /rooms/{roomId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid;
+
+      allow update, delete: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
