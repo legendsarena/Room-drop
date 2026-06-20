@@ -504,3 +504,884 @@ function CreatorStudioScreen({ myRooms, onCreateNew, onEdit, onDelete, tick }) {
               </div>
             </div>
           ))}
+          </>
+      ) : (
+        <div className="room-list">
+          {myRooms.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">🎮</div>
+              <h4>No rooms posted yet</h4>
+              <p>Create your first room post — it'll notify everyone who's saved you.</p>
+            </div>
+          ) : myRooms.map((r) => (
+            <div key={r.id} className="creator-room-card">
+              <div className="room-card-top">
+                <ModeBadge mode={r.mode} />
+                <span className={`status-chip ${r.startsInSec - tick <= 0 ? 'live' : 'scheduled'}`}>
+                  {r.startsInSec - tick <= 0 ? 'Live' : 'Scheduled'}
+                </span>
+              </div>
+              <div className="room-card-codes">
+                <CopyField label="ROOM ID" value={r.roomId} />
+                <CopyField label="PASSWORD" value={r.password} />
+              </div>
+              <SlotBar filled={r.filledSlots} total={r.totalSlots} />
+              <div className="creator-room-actions">
+                <button className="btn-ghost small" onClick={() => onEdit(r)}><Edit2 size={13} /> Edit</button>
+                <button className="btn-ghost small danger" onClick={() => onDelete(r.id)}><Trash2 size={13} /> Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+/* ============================================================
+   CREATE / EDIT ROOM SHEET
+   ============================================================ */
+
+function CreateRoomSheet({ open, onClose, onSave, initial }) {
+  const [form, setForm] = useState(initial || {
+    roomId: '', password: '', mode: 'Squad', region: 'Indian', language: 'English', totalSlots: 48, scheduleMinutes: 0,
+  });
+
+  useEffect(() => {
+    if (open) setForm(initial || { roomId: '', password: '', mode: 'Squad', region: 'Indian', language: 'English', totalSlots: 48, scheduleMinutes: 0 });
+  }, [open, initial]);
+
+  if (!open) return null;
+
+  const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const canSave = form.roomId.trim().length >= 4 && form.password.trim().length >= 2;
+
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <h3>{initial ? 'Edit room' : 'Publish a room'}</h3>
+          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="form-row">
+          <label>Room ID</label>
+          <input className="form-input mono" placeholder="e.g. 482910337" value={form.roomId} onChange={(e) => update('roomId', e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Password</label>
+          <input className="form-input mono" placeholder="e.g. 4521" value={form.password} onChange={(e) => update('password', e.target.value)} />
+        </div>
+
+        <div className="filter-group">
+          <span className="filter-label">Game mode</span>
+          <div className="chip-row">
+            {MODES.map((m) => (
+              <button key={m} className={`filter-chip ${form.mode === m ? 'active' : ''}`} onClick={() => update('mode', m)}>{m}</button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Region</span>
+          <div className="chip-row">
+            {REGIONS.map((r) => (
+              <button key={r} className={`filter-chip ${form.region === r ? 'active' : ''}`} onClick={() => update('region', r)}>{r}</button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Language</span>
+          <div className="chip-row">
+            {LANGUAGES.map((l) => (
+              <button key={l} className={`filter-chip ${form.language === l ? 'active' : ''}`} onClick={() => update('language', l)}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="form-row">
+          <label>Total slots</label>
+          <input type="number" className="form-input" value={form.totalSlots} onChange={(e) => update('totalSlots', Number(e.target.value))} />
+        </div>
+
+        <div className="form-row">
+          <label>Starts in (minutes) — 0 means publish live now</label>
+          <input type="number" className="form-input" value={form.scheduleMinutes} onChange={(e) => update('scheduleMinutes', Number(e.target.value))} />
+        </div>
+
+        <button className="btn-primary full" disabled={!canSave} onClick={() => { onSave(form); onClose(); }}>
+          {initial ? 'Save changes' : form.scheduleMinutes > 0 ? 'Schedule room' : 'Publish now'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   PROFILE / AUTH SCREEN
+   ============================================================ */
+
+function AuthScreen({ onGoogleLogin, onGuestLogin, onEmailAuth, authError, authBusy }) {
+  const [emailMode, setEmailMode] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  if (emailMode) {
+    return (
+      <div className="screen auth-screen">
+        <div className="auth-hero">
+          <div className="brand-mark xl">RD</div>
+          <h1 className="auth-title">RoomDrop</h1>
+          <p className="auth-sub">{isSignUp ? 'Create your account' : 'Welcome back'}</p>
+        </div>
+
+        <div className="form-row">
+          <label>Email</label>
+          <input className="form-input" type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="form-row">
+          <label>Password</label>
+          <input className="form-input" type="password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+
+        {authError && <p style={{ color: '#FF4655', fontSize: 12.5, marginBottom: 14 }}>{authError}</p>}
+
+        <button
+          className="btn-primary full"
+          disabled={authBusy || !email || password.length < 6}
+          onClick={() => onEmailAuth(email, password, isSignUp)}
+        >
+          {authBusy ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
+        </button>
+
+        <button className="auth-btn guest" style={{ marginTop: 10 }} onClick={() => setIsSignUp((v) => !v)}>
+          {isSignUp ? 'Already have an account? Log in' : "New here? Create an account"}
+        </button>
+        <button className="auth-btn guest" onClick={() => setEmailMode(false)}>
+          ← Back
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen auth-screen">
+      <div className="auth-hero">
+        <div className="brand-mark xl">RD</div>
+        <h1 className="auth-title">RoomDrop</h1>
+        <p className="auth-sub">Discover live Free Fire custom rooms. Join in seconds.</p>
+      </div>
+
+      {authError && <p style={{ color: '#FF4655', fontSize: 12.5, marginBottom: 14, textAlign: 'center' }}>{authError}</p>}
+
+      <div className="auth-buttons">
+        <button className="auth-btn google" disabled={authBusy} onClick={onGoogleLogin}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.61z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.84.86-3.05.86-2.35 0-4.34-1.58-5.05-3.72H.9v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.16.29-1.7V4.97H.9A9 9 0 0 0 0 9c0 1.45.35 2.83.9 4.03z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.95 8.95 0 0 0 9 0 9 9 0 0 0 .9 4.97L3.95 7.3C4.66 5.16 6.65 3.58 9 3.58z"/></svg>
+          Continue with Google
+        </button>
+        <button className="auth-btn email" disabled={authBusy} onClick={() => setEmailMode(true)}>
+          <Mail size={17} /> Continue with Email
+        </button>
+        <button className="auth-btn guest" disabled={authBusy} onClick={onGuestLogin}>
+          <User size={17} /> Continue as Guest
+        </button>
+      </div>
+
+      <p className="auth-fine">By continuing you agree to RoomDrop's Terms & Privacy Policy.</p>
+    </div>
+  );
+}
+function ProfileScreen({ user, onLogout, coins, isPremium, onWatchAd, onUpgrade }) {
+  const [lang, setLang] = useState('English');
+  return (
+    <div className="screen">
+      <h2 className="page-title">Profile</h2>
+
+      <div className="profile-card">
+        <div className="creator-avatar xl">{(user?.name || 'G').slice(0, 2).toUpperCase()}</div>
+        <div>
+          <span className="profile-name">{user?.name || 'Guest player'}</span>
+          <span className="profile-method">Signed in via {user?.method || 'guest'}</span>
+        </div>
+      </div>
+
+      <div className="wallet-row">
+        <div className="wallet-card">
+          <Coins size={18} color="#FFC93C" />
+          <span className="wallet-value">{coins}</span>
+          <span className="wallet-label">Coins</span>
+        </div>
+        <button className="wallet-card action" onClick={onWatchAd}>
+          <Play size={16} />
+          <span className="wallet-action-text">Watch ad<br />+10 coins</span>
+        </button>
+      </div>
+
+      {!isPremium ? (
+        <div className="premium-banner" onClick={onUpgrade}>
+          <Crown size={20} color="#FFC93C" />
+          <div>
+            <span className="premium-banner-title">Go Premium</span>
+            <span className="premium-banner-sub">Remove ads · Priority notifications</span>
+          </div>
+          <ChevronRight size={16} />
+        </div>
+      ) : (
+        <div className="premium-banner active">
+          <Crown size={20} color="#FFC93C" />
+          <div>
+            <span className="premium-banner-title">Premium active</span>
+            <span className="premium-banner-sub">Ads removed · Priority alerts on</span>
+          </div>
+        </div>
+      )}
+
+      <div className="settings-list">
+        <div className="settings-row">
+          <span><Gift size={16} /> Daily reward</span>
+          <span className="settings-value">Day 3 streak</span>
+        </div>
+        <div className="settings-row">
+          <span><Share2 size={16} /> Refer a friend</span>
+          <span className="settings-value">+50 coins</span>
+        </div>
+        <div className="settings-row" onClick={() => setLang(lang === 'English' ? 'Malayalam' : 'English')}>
+          <span><Globe size={16} /> App language</span>
+          <span className="settings-value">{lang} <ChevronDown size={13} /></span>
+        </div>
+        <div className="settings-row">
+          <span><Bell size={16} /> Notification settings</span>
+          <ChevronRight size={14} />
+        </div>
+      </div>
+
+      <button className="btn-ghost full" onClick={onLogout}><LogOut size={15} /> Log out</button>
+    </div>
+  );
+}
+
+/* ============================================================
+   ADMIN PANEL (preview)
+   ============================================================ */
+
+function AdminScreen({ rooms }) {
+  const [tab, setTab] = useState('overview');
+  return (
+    <div className="screen">
+      <h2 className="page-title">Admin Panel</h2>
+      <div className="studio-tabs scroll">
+        {['overview', 'users', 'rooms', 'ads'].map((t) => (
+          <button key={t} className={`studio-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+            {t[0].toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'overview' && (
+        <div className="dash-grid">
+          <div className="dash-card"><Users size={16} /><span className="dash-value">12,480</span><span className="dash-label">Total users</span></div>
+          <div className="dash-card"><BarChart2 size={16} /><span className="dash-value">{rooms.length}</span><span className="dash-label">Active rooms</span></div>
+          <div className="dash-card"><TrendingUp size={16} /><span className="dash-value">3,920</span><span className="dash-label">Joins today</span></div>
+          <div className="dash-card"><Crown size={16} /><span className="dash-value">214</span><span className="dash-label">Premium users</span></div>
+        </div>
+      )}
+
+      {tab === 'users' && (
+        <div className="admin-list">
+          {['ProGamerXO', 'KeralaSniper', 'ToxicPlayer22'].map((u, i) => (
+            <div key={u} className="admin-row">
+              <div className="creator-avatar">{u.slice(0, 2).toUpperCase()}</div>
+              <span className="admin-row-name">{u}</span>
+              <button className={`btn-ghost small ${i === 2 ? 'danger' : ''}`}>{i === 2 ? 'Ban user' : 'View'}</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'rooms' && (
+        <div className="admin-list">
+          {rooms.slice(0, 5).map((r) => (
+            <div key={r.id} className="admin-row">
+              <ModeBadge mode={r.mode} />
+              <span className="admin-row-name mono">#{r.roomId.slice(0, 6)}</span>
+              <button className="btn-ghost small danger">Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'ads' && (
+        <div className="empty-state">
+          <div className="empty-state-icon">📺</div>
+          <h4>Ad campaign manager</h4>
+          <p>Manage banner placements, rewarded ad payouts, and fill rates here.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   BOTTOM NAV
+   ============================================================ */
+
+function BottomNav({ tab, setTab, isCreatorMode }) {
+  const items = [
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'saved', icon: Heart, label: 'Saved' },
+    { id: 'studio', icon: BarChart2, label: 'Studio' },
+    { id: 'profile', icon: User, label: 'Profile' },
+  ];
+  return (
+    <div className="bottom-nav">
+      {items.map(({ id, icon: Icon, label }) => (
+        <button key={id} className={`nav-item ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+          <Icon size={20} />
+          <span>{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================
+   ROOT APP
+   ============================================================ */
+
+export default function RoomDropApp() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [tab, setTab] = useState('home');
+  const [rooms, setRooms] = useState([]);
+  const [tick, setTick] = useState(0);
+  const [favorites, setFavorites] = useState([]);
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({ mode: null, region: null, language: null });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [activeRoom, setActiveRoom] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [coins, setCoins] = useState(120);
+  const [isPremium, setIsPremium] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [adminPreview, setAdminPreview] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 1800);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    checkRedirectResult().catch(() => {});
+    const unsubscribe = subscribeToAuthChanges((fbUser) => {
+      setAuthChecked(true);
+      if (fbUser) {
+        const method = fbUser.isAnonymous ? 'guest' : fbUser.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
+        const name = fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Guest' + fbUser.uid.slice(0, 5));
+        setUser({ uid: fbUser.uid, name, method, email: fbUser.email || null });
+        setAuthed(true);
+      } else {
+        setUser(null);
+        setAuthed(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    const unsubscribe = subscribeToActiveRooms((firestoreRooms) => {
+      const mapped = firestoreRooms.map((r) => {
+        const startsAtMs = r.startsAt?.toDate ? r.startsAt.toDate().getTime() : Date.now();
+        const startsInSec = Math.max(0, Math.round((startsAtMs - Date.now()) / 1000));
+        return {
+          id: r.id,
+          roomId: r.roomId,
+          password: r.password,
+          mode: r.mode,
+          region: r.region,
+          language: r.language,
+          creator: r.creatorName,
+          creatorId: r.creatorId,
+          creatorVerified: !!r.creatorVerified,
+          startsInSec,
+          totalSlots: r.totalSlots,
+          filledSlots: r.filledSlots,
+          views: r.views || 0,
+          joins: r.joins || 0,
+          trending: !!r.trending,
+        };
+      });
+      setRooms(mapped);
+    });
+    return () => unsubscribe();
+  }, [authed]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    getFavorites(user.uid).then(setFavorites).catch(() => setFavorites([]));
+  }, [user?.uid]);
+
+  const myRooms = rooms.filter((r) => r.creatorId === user?.uid);
+
+  const handleGoogleLogin = async () => {
+    setAuthError(null);
+    setAuthBusy(true);
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      setAuthError(friendlyAuthError(err));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setAuthError(null);
+    setAuthBusy(true);
+    try {
+      await loginAsGuest();
+    } catch (err) {
+      setAuthError(friendlyAuthError(err));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleEmailAuth = async (email, password, isSignUp) => {
+    setAuthError(null);
+    setAuthBusy(true);
+    try {
+      if (isSignUp) {
+        await signUpWithEmail(email, password);
+      } else {
+        await loginWithEmail(email, password);
+      }
+    } catch (err) {
+      setAuthError(friendlyAuthError(err));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await firebaseLogout();
+    setTab('home');
+  };
+
+  const toggleFavorite = (creator) => {
+    setFavorites((f) => {
+      const next = f.includes(creator) ? f.filter((c) => c !== creator) : [...f, creator];
+      if (user?.uid) fbSetFavorites(user.uid, next).catch(() => {});
+      return next;
+    });
+    setToast(favorites.includes(creator) ? `Removed ${creator} from saved` : `Saved ${creator} — you'll get notified of new rooms`);
+  };
+
+  const handleCreateRoom = async (form) => {
+    if (!user) return;
+    try {
+      await fbCreateRoom({
+        roomId: form.roomId,
+        password: form.password,
+        mode: form.mode,
+        region: form.region,
+        language: form.language,
+        totalSlots: form.totalSlots,
+        startsInSeconds: form.scheduleMinutes > 0 ? form.scheduleMinutes * 60 : 5,
+        creatorId: user.uid,
+        creatorName: user.name,
+        creatorVerified: user.method !== 'guest',
+      });
+      setToast(form.scheduleMinutes > 0 ? 'Room scheduled' : 'Room published — followers notified');
+    } catch (err) {
+      setToast('Could not publish room — check your connection');
+    }
+  };
+
+  const handleEditRoom = async (form) => {
+    if (!editingRoom) return;
+    try {
+      await fbUpdateRoom(editingRoom.id, {
+        roomId: form.roomId,
+        password: form.password,
+        mode: form.mode,
+        region: form.region,
+        language: form.language,
+        totalSlots: form.totalSlots,
+      });
+      setToast('Room updated');
+    } catch (err) {
+      setToast('Could not update room');
+    } finally {
+      setEditingRoom(null);
+    }
+  };
+
+  const handleDeleteRoom = async (id) => {
+    try {
+      await fbDeleteRoom(id);
+      setToast('Room deleted');
+    } catch (err) {
+      setToast('Could not delete room');
+    }
+  };
+
+  const handleOpenRoom = (room) => {
+    setActiveRoom(room);
+    if (room?.id) incrementRoomJoins(room.id).catch(() => {});
+  };
+
+  const handleWatchAd = () => {
+    setCoins((c) => c + 10);
+    setToast('+10 coins added');
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="rd-root">
+        <style>{STYLES}</style>
+        <div className="screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <div className="brand-mark xl">RD</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authed) {
+    return (
+      <div className="rd-root">
+        <style>{STYLES}</style>
+        <AuthScreen
+          onGoogleLogin={handleGoogleLogin}
+          onGuestLogin={handleGuestLogin}
+          onEmailAuth={handleEmailAuth}
+          authError={authError}
+          authBusy={authBusy}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rd-root">
+      <style>{STYLES}</style>
+      {adminPreview ? (
+        <AdminScreen rooms={rooms} />
+      ) : tab === 'home' ? (
+        <HomeScreen
+          rooms={rooms}
+          tick={tick}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+          onOpenRoom={handleOpenRoom}
+          query={query}
+          setQuery={setQuery}
+          filters={filters}
+          setFilters={setFilters}
+          onOpenFilters={() => setFilterOpen(true)}
+        />
+      ) : tab === 'saved' ? (
+        <SavedScreen rooms={rooms} tick={tick} favorites={favorites} onToggleFavorite={toggleFavorite} onOpenRoom={handleOpenRoom} />
+      ) : tab === 'studio' ? (
+        <CreatorStudioScreen
+          myRooms={myRooms}
+          tick={tick}
+          onCreateNew={() => { setEditingRoom(null); setCreateOpen(true); }}
+          onEdit={(r) => { setEditingRoom(r); setCreateOpen(true); }}
+          onDelete={handleDeleteRoom}
+        />
+      ) : (
+        <ProfileScreen
+          user={user}
+          onLogout={handleLogout}
+          coins={coins}
+          isPremium={isPremium}
+          onWatchAd={handleWatchAd}
+          onUpgrade={() => { setIsPremium(true); setToast('Welcome to Premium 👑'); }}
+        />
+      )}
+      {!adminPreview && <BottomNav tab={tab} setTab={setTab} />}
+      <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} setFilters={setFilters} />
+      <RoomDetailModal room={activeRoom} onClose={() => setActiveRoom(null)} tick={tick} />
+      <CreateRoomSheet
+        open={createOpen}
+        onClose={() => { setCreateOpen(false); setEditingRoom(null); }}
+        onSave={editingRoom ? handleEditRoom : handleCreateRoom}
+        initial={editingRoom}
+      />
+      {toast && <div className="toast">{toast}</div>}
+      <button className="dev-toggle" onClick={() => setAdminPreview((v) => !v)}>
+        {adminPreview ? 'Exit admin preview' : 'Preview admin panel'}
+      </button>
+    </div>
+  );
+}
+
+function friendlyAuthError(err) {
+  const code = err?.code || '';
+  if (code === 'auth/operation-not-allowed') return 'This login method isn\'t turned on yet in Firebase — enable it in Authentication > Sign-in method.';
+  if (code === 'auth/email-already-in-use') return 'That email already has an account — try logging in instead.';
+  if (code === 'auth/invalid-email') return 'That email address doesn\'t look right.';
+  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') return 'Incorrect email or password.';
+  if (code === 'auth/weak-password') return 'Password should be at least 6 characters.';
+  if (code === 'auth/popup-closed-by-user') return 'Login was closed before finishing — try again.';
+  if (code === 'auth/network-request-failed') return 'Network error — check your connection and try again.';
+  return 'Something went wrong signing in. Please try again.';
+    }/* ============================================================
+   STYLES
+   ============================================================ */
+
+const STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+.rd-root{
+  --bg: #0B0E14;
+  --surface: #141925;
+  --surface-2: #1B2230;
+  --border: #252D3D;
+  --text: #EAEEF5;
+  --text-soft: #8B95A8;
+  --red: #FF4655;
+  --mint: #39E2A0;
+  --amber: #FFC93C;
+  --purple: #9D7BFF;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+.rd-root *{ box-sizing: border-box; }
+.rd-root button{ font-family: inherit; cursor: pointer; border:none; background:none; color: inherit; }
+.rd-root input{ font-family: inherit; }
+
+.screen{ padding: 18px 16px 90px; min-height: 100vh; animation: fadeIn .25s ease; }
+@keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+.brand-row{ display:flex; align-items:center; gap:8px; }
+.brand-mark{ width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--red),#C7283A); display:flex; align-items:center; justify-content:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; color:#fff; }
+.brand-mark.xl{ width:64px; height:64px; border-radius:16px; font-size:24px; margin:0 auto 16px; }
+.brand-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:19px; letter-spacing:0.02em; }
+
+.home-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.home-sub{ color:var(--text-soft); font-size:12.5px; margin-top:4px; }
+.icon-btn-circle{ width:36px; height:36px; border-radius:50%; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+
+.search-row{ display:flex; gap:8px; margin-bottom:12px; }
+.search-input-wrap{ flex:1; position:relative; display:flex; align-items:center; }
+.search-icon{ position:absolute; left:12px; color:var(--text-soft); }
+.search-input{ width:100%; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 12px 11px 36px; color:var(--text); font-size:13.5px; outline:none; }
+.search-input:focus{ border-color:var(--red); }
+.filter-btn{ width:42px; background:var(--surface); border:1px solid var(--border); border-radius:12px; display:flex; align-items:center; justify-content:center; position:relative; }
+.filter-count{ position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; font-size:9px; font-weight:700; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+.active-filters-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.active-filter-chip{ display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:5px 10px; font-size:11.5px; color:var(--text-soft); }
+.active-filter-chip svg{ cursor:pointer; }
+
+.section-label{ display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-soft); margin:18px 0 10px; }
+.count-pill{ background:var(--surface-2); padding:1px 7px; border-radius:999px; font-size:11px; }
+
+.trending-scroll{ display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px; }
+.trending-card{ flex-shrink:0; min-width:140px; background:linear-gradient(160deg,var(--surface-2),var(--surface)); border:1px solid var(--border); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:6px; }
+.trending-card-creator{ font-size:13px; font-weight:600; }
+.trending-card-slots{ font-size:11px; color:var(--text-soft); }
+
+.mode-badge{ display:inline-flex; align-items:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11.5px; letter-spacing:0.03em; padding:4px 10px; border-radius:7px; border:1px solid; }
+.mode-badge.lg{ font-size:14px; padding:6px 14px; }
+
+.trending-chip{ display:flex; align-items:center; gap:3px; background:rgba(255,201,60,0.12); color:var(--amber); font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:7px; }
+
+.room-list{ display:flex; flex-direction:column; gap:12px; }
+
+.room-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px; position:relative; overflow:hidden; transition: transform .15s ease, border-color .15s ease; }
+.room-card:active{ transform: scale(0.98); }
+.room-card.pulse{ animation: cardPulse 1.4s ease infinite; border-color: rgba(255,70,85,0.4); }
+@keyframes cardPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,70,85,0); } 50%{ box-shadow:0 0 0 3px rgba(255,70,85,0.12); } }
+
+.countdown-strip{ position:absolute; top:0; left:0; height:3px; transition: width 1s linear, background .3s; }
+.countdown-strip.normal{ background: var(--mint); }
+.countdown-strip.warning{ background: var(--amber); }
+.countdown-strip.critical{ background: var(--red); }
+
+.room-card-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; margin-top:4px; }
+.room-card-badges{ display:flex; gap:6px; align-items:center; }
+.fav-btn{ width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-soft); border-radius:50%; }
+.fav-btn.active{ color:var(--red); }
+
+.room-card-codes{ display:flex; gap:8px; margin-bottom:12px; }
+.copy-field{ flex:1; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:9px 10px; text-align:left; transition: border-color .15s; }
+.copy-field:active{ border-color: var(--mint); }
+.copy-field-text{ display:flex; flex-direction:column; gap:1px; overflow:hidden; }
+.copy-field-label{ font-size:9.5px; color:var(--text-soft); font-weight:700; letter-spacing:0.05em; }
+.copy-field-value{ font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.copy-field-icon{ color:var(--text-soft); flex-shrink:0; }
+.copy-field-icon.copied{ color:var(--mint); }
+
+.room-card-meta{ display:flex; gap:6px; margin-bottom:12px; }
+.meta-chip{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-soft); background:var(--surface-2); padding:4px 9px; border-radius:7px; }
+
+.room-card-bottom{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.creator-row{ display:flex; align-items:center; gap:8px; }
+.creator-avatar{ width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,var(--purple),#6B4FD8); display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; flex-shrink:0; }
+.creator-avatar.lg{ width:44px; height:44px; font-size:15px; }
+.creator-avatar.xl{ width:56px; height:56px; font-size:18px; }
+.creator-name{ font-size:12.5px; font-weight:600; }
+.verified-dot{ width:7px; height:7px; border-radius:50%; background:var(--mint); display:inline-block; }
+
+.countdown-pill{ display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; padding:5px 10px; border-radius:8px; }
+.countdown-pill.normal{ color:var(--mint); background:rgba(57,226,160,0.1); }
+.countdown-pill.warning{ color:var(--amber); background:rgba(255,201,60,0.1); }
+.countdown-pill.critical{ color:var(--red); background:rgba(255,70,85,0.12); }
+
+.slot-wrap{ display:flex; flex-direction:column; gap:5px; }
+.slot-bar-bg{ height:5px; border-radius:999px; background:var(--surface-2); overflow:hidden; }
+.slot-bar-fg{ height:100%; border-radius:999px; transition: width .3s; }
+.slot-text{ font-size:10.5px; color:var(--text-soft); }
+
+.empty-state{ text-align:center; padding:40px 20px; color:var(--text-soft); }
+.empty-state-icon{ font-size:32px; margin-bottom:10px; }
+.empty-state h4{ color:var(--text); font-size:15px; margin-bottom:6px; }
+.empty-state p{ font-size:12.5px; line-height:1.6; }
+.empty-inline{ color:var(--text-soft); font-size:12.5px; }
+
+.bottom-nav{ position:fixed; bottom:0; left:0; right:0; max-width:480px; margin:0 auto; background:rgba(11,14,20,0.95); backdrop-filter:blur(10px); border-top:1px solid var(--border); display:flex; padding:8px 4px max(8px, env(safe-area-inset-bottom)); z-index:30; }
+.nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; color:var(--text-soft); font-size:10.5px; font-weight:600; border-radius:10px; }
+.nav-item.active{ color:var(--red); }
+
+.sheet-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; display:flex; align-items:flex-end; max-width:480px; margin:0 auto; }
+.sheet{ background:var(--surface); border-radius:20px 20px 0 0; padding:10px 18px 28px; width:100%; max-height:85vh; overflow-y:auto; animation: slideUp .25s ease; }
+@keyframes slideUp{ from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+.sheet-handle{ width:36px; height:4px; background:var(--border); border-radius:999px; margin:4px auto 14px; }
+.sheet-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.sheet-header h3{ font-size:17px; font-weight:700; }
+.icon-btn{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--text-soft); }
+
+.filter-group{ margin-bottom:18px; }
+.filter-label{ display:block; font-size:11.5px; font-weight:700; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+.chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.filter-chip{ padding:8px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); font-size:12.5px; font-weight:600; color:var(--text-soft); }
+.filter-chip.active{ border-color:var(--red); color:var(--red); background:rgba(255,70,85,0.1); }
+
+.sheet-actions{ display:flex; gap:10px; margin-top:8px; }
+.btn-ghost{ flex:1; padding:13px; border-radius:12px; border:1px solid var(--border); color:var(--text); font-weight:600; font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.btn-ghost.small{ padding:8px 12px; font-size:12px; flex:none; }
+.btn-ghost.danger{ color:var(--red); border-color:rgba(255,70,85,0.3); }
+.btn-ghost.full{ width:100%; margin-top:20px; }
+.btn-primary{ flex:1; padding:13px; border-radius:12px; background:var(--red); color:#fff; font-weight:700; font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.btn-primary.small{ padding:8px 14px; font-size:12px; flex:none; border-radius:9px; }
+.btn-primary.full{ width:100%; }
+.btn-primary:disabled{ opacity:0.4; }
+.join-btn{ margin-top:18px; background:var(--mint); color:#0B0E14; }
+
+.detail-sheet{ padding-top:10px; }
+.detail-header{ display:flex; justify-content:space-between; align-items:center; }
+.detail-countdown{ text-align:center; margin-top:18px; display:flex; flex-direction:column; gap:4px; }
+.detail-countdown-label{ font-size:11.5px; color:var(--text-soft); }
+.detail-countdown-value{ font-family:'JetBrains Mono',monospace; font-size:32px; font-weight:700; }
+.detail-countdown-value.normal{ color:var(--mint); }
+.detail-countdown-value.warning{ color:var(--amber); }
+.detail-countdown-value.critical{ color:var(--red); }
+.detail-grid{ display:flex; gap:8px; margin:16px 0 10px; }
+.detail-stat{ flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; background:var(--surface-2); border-radius:10px; padding:10px 6px; font-size:11px; color:var(--text-soft); }
+.detail-creator{ display:flex; align-items:center; gap:12px; margin-top:18px; padding:14px; background:var(--surface-2); border-radius:12px; }
+.creator-name-row{ display:flex; align-items:center; gap:6px; }
+.detail-creator-sub{ font-size:11px; color:var(--text-soft); display:block; margin-top:2px;}
+
+.form-row{ margin-bottom:14px; }
+.form-row label{ display:block; font-size:11.5px; color:var(--text-soft); margin-bottom:6px; font-weight:600; }
+.form-input{ width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:var(--text); font-size:13.5px; outline:none; }
+.form-input.mono{ font-family:'JetBrains Mono',monospace; }
+.form-input:focus{ border-color:var(--red); }
+
+.page-title{ font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; margin-bottom:4px; }
+.page-sub{ color:var(--text-soft); font-size:12.5px; margin-bottom:18px; }
+
+.saved-creators-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.saved-creator-pill{ display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 12px 6px 6px; font-size:12.5px; font-weight:600; }
+.saved-creator-pill svg{ color:var(--text-soft); cursor:pointer; }
+
+.studio-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.studio-tabs{ display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--border); }
+.studio-tabs.scroll{ overflow-x:auto; }
+.studio-tab{ padding:10px 14px; font-size:13px; font-weight:600; color:var(--text-soft); border-bottom:2px solid transparent; white-space:nowrap; }
+.studio-tab.active{ color:var(--text); border-color:var(--red); }
+
+.dash-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px; }
+.dash-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:6px; color:var(--text-soft); }
+.dash-value{ font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; color:var(--text); }
+.dash-label{ font-size:11px; }
+
+.analytics-row{ display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; }
+.analytics-row-mid{ flex:1; display:flex; flex-direction:column; }
+.analytics-room-id{ font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; }
+.analytics-sub{ font-size:10.5px; color:var(--text-soft); }
+.analytics-stats{ display:flex; gap:10px; font-size:11.5px; color:var(--text-soft); }
+.analytics-stats span{ display:flex; align-items:center; gap:3px; }
+
+.creator-room-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+.status-chip{ font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:7px; }
+.status-chip.live{ background:rgba(255,70,85,0.12); color:var(--red); }
+.status-chip.scheduled{ background:rgba(255,201,60,0.12); color:var(--amber); }
+.creator-room-actions{ display:flex; gap:8px; margin-top:10px; }
+
+.auth-screen{ display:flex; flex-direction:column; justify-content:center; min-height:100vh; padding:32px; }
+.auth-hero{ text-align:center; margin-bottom:40px; }
+.auth-title{ font-family:'Rajdhani',sans-serif; font-size:30px; font-weight:700; margin-bottom:8px; }
+.auth-sub{ color:var(--text-soft); font-size:13.5px; }
+.auth-buttons{ display:flex; flex-direction:column; gap:12px; }
+.auth-btn{ display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; border-radius:12px; font-weight:600; font-size:13.5px; border:1px solid var(--border); }
+.auth-btn.google{ background:#fff; color:#1f1f1f; }
+.auth-btn.email{ background:var(--surface); color:var(--text); }
+.auth-btn.guest{ background:transparent; color:var(--text-soft); }
+.auth-fine{ text-align:center; font-size:11px; color:var(--text-soft); margin-top:24px; line-height:1.6; }
+
+.profile-card{ display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+.profile-name{ display:block; font-size:16px; font-weight:700; }
+.profile-method{ display:block; font-size:12px; color:var(--text-soft); text-transform:capitalize; margin-top:2px; }
+
+.wallet-row{ display:flex; gap:10px; margin-bottom:18px; }
+.wallet-card{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+.wallet-value{ font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; }
+.wallet-label{ font-size:11px; color:var(--text-soft); }
+.wallet-card.action{ justify-content:center; align-items:center; flex-direction:row; gap:8px; }
+.wallet-action-text{ font-size:11.5px; font-weight:600; line-height:1.3; }
+
+.premium-banner{ display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,rgba(255,201,60,0.12),rgba(255,201,60,0.04)); border:1px solid rgba(255,201,60,0.3); border-radius:14px; padding:14px; margin-bottom:18px; }
+.premium-banner.active{ opacity:0.85; }
+.premium-banner-title{ display:block; font-size:13.5px; font-weight:700; }
+.premium-banner-sub{ display:block; font-size:11px; color:var(--text-soft); margin-top:2px; }
+
+.settings-list{ display:flex; flex-direction:column; margin-bottom:24px; }
+.settings-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 4px; border-bottom:1px solid var(--border); font-size:13px; font-weight:500; }
+.settings-row span:first-child{ display:flex; align-items:center; gap:10px; color:var(--text); }
+.settings-value{ display:flex; align-items:center; gap:4px; color:var(--text-soft); font-size:12.5px; }
+
+.admin-list{ display:flex; flex-direction:column; gap:8px; }
+.admin-row{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+.admin-row-name{ flex:1; font-size:13px; font-weight:600; }
+.admin-row-name.mono{ font-family:'JetBrains Mono',monospace; }
+
+.toast{ position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#fff; color:#0B0E14; font-size:12.5px; font-weight:600; padding:11px 18px; border-radius:999px; z-index:60; animation: toastIn .25s ease; box-shadow:0 8px 24px rgba(0,0,0,0.3); white-space:nowrap; }
+@keyframes toastIn{ from{opacity:0; transform:translate(-50%,10px);} to{opacity:1; transform:translate(-50%,0);} }
+
+.dev-toggle{ position:fixed; top:8px; right:8px; font-size:9px; background:rgba(255,255,255,0.08); padding:5px 9px; border-radius:6px; color:var(--text-soft); z-index:70; }
+
+@media (prefers-reduced-motion: reduce){
+  .room-card.pulse{ animation:none; }
+  .sheet, .screen, .toast{ animation:none; }
+}
+`;
