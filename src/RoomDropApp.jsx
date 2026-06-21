@@ -327,7 +327,7 @@ function RoomDetailModal({ room, onClose, tick }) {
 function HomeScreen({ rooms, tick, favorites, onToggleFavorite, onOpenRoom, query, setQuery, filters, setFilters, onOpenFilters }) {
   const filtered = useMemo(() => {
     return rooms.filter((r) => {
-      if (r.startsInSec - tick < -5) return false; // hide expired
+      if (r.startsInSec - tick < -1800) return false; // hide expired
       if (filters.mode && r.mode !== filters.mode) return false;
       if (filters.region && r.region !== filters.region) return false;
       if (filters.language && r.language !== filters.language) return false;
@@ -425,7 +425,7 @@ function HomeScreen({ rooms, tick, favorites, onToggleFavorite, onOpenRoom, quer
    ============================================================ */
 
 function SavedScreen({ rooms, tick, favorites, onToggleFavorite, onOpenRoom }) {
-  const favRooms = rooms.filter((r) => favorites.includes(r.creator) && r.startsInSec - tick > -5);
+  const favRooms = rooms.filter((r) => favorites.includes(r.creator) && r.startsInSec - tick > -1800);
   return (
     <div className="screen">
       <h2 className="page-title">Saved creators</h2>
