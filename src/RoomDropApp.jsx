@@ -14,6 +14,7 @@ import {
   subscribeToActiveRooms,
   subscribeToMyRooms,
   incrementRoomJoins,
+  incrementRoomSlot,
   getFavorites,
   setFavorites as fbSetFavorites,
 } from './firebase';
@@ -98,15 +99,16 @@ function ModeBadge({ mode, size = 'sm' }) {
   );
 }
 
-function CopyField({ label, value }) {
+
+function CopyField({ label, value, onCopy }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = (e) => {
     e.stopPropagation();
     navigator.clipboard?.writeText(value).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
-  };
-  return (
+    if (onCopy) onCopy();
+  };  return (
     <button className="copy-field" onClick={handleCopy}>
       <div className="copy-field-text">
         <span className="copy-field-label">{label}</span>
