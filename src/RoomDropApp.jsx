@@ -177,9 +177,9 @@ function RoomCard({ room, onOpen, isFavorite, onToggleFavorite, tick }) {
       </div>
 
       <div className="room-card-codes">
-        <CopyField label="ROOM ID" value={room.roomId} />
+        <CopyField label="ROOM ID" value={room.roomId} onCopy={() => incrementRoomSlot(room.id)} />
         <CopyField label="PASSWORD" value={room.password} />
-      </div>
+      </div> 
 
       <div className="room-card-meta">
         <span className="meta-chip"><Globe size={12} /> {room.region}</span>
