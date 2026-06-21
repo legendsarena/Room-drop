@@ -185,7 +185,7 @@ async function incrementRoomViews(roomDocId) {
 async function incrementRoomJoins(roomDocId) {
   await updateDoc(doc(db, "rooms", roomDocId), { joins: increment(1) });
 }
-export async function incrementRoomSlot(roomDocId) {
+ async function incrementRoomSlot(roomDocId) {
   const roomRef = doc(db, "rooms", roomDocId);
   await updateDoc(roomRef, { filledSlots: increment(1) });
 }
